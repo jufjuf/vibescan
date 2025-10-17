@@ -1,5 +1,5 @@
 import { BaseFixer, FixResult } from './base-fixer';
-import { Issue } from '../types';
+import { Issue, IssueType } from '../types';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
@@ -9,6 +9,12 @@ export class ErrorHandlerFixer extends BaseFixer {
   name = 'error-handler-fixer';
 
   canFix(issue: Issue): boolean {
+    // Use type-safe matching instead of string matching
+    if (issue.type) {
+      return issue.type === IssueType.MISSING_ERROR_HANDLING;
+    }
+
+    // Fallback to message matching for backward compatibility during migration
     return issue.message.includes('Async function without error handling') ||
            issue.message.includes('async function') && issue.message.includes('try-catch');
   }

@@ -1,5 +1,5 @@
 import { BaseFixer, FixResult } from './base-fixer';
-import { Issue } from '../types';
+import { Issue, IssueType } from '../types';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
@@ -11,6 +11,17 @@ export class SecretFixer extends BaseFixer {
   name = 'secret-fixer';
 
   canFix(issue: Issue): boolean {
+    // Use type-safe matching instead of string matching
+    if (issue.type) {
+      return [
+        IssueType.HARDCODED_API_KEY,
+        IssueType.HARDCODED_SECRET,
+        IssueType.HARDCODED_PASSWORD,
+        IssueType.HARDCODED_TOKEN
+      ].includes(issue.type);
+    }
+
+    // Fallback to message matching for backward compatibility during migration
     return issue.message.includes('Hardcoded API key') ||
            issue.message.includes('Hardcoded secret') ||
            issue.message.includes('Hardcoded password') ||

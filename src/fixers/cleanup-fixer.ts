@@ -1,5 +1,5 @@
 import { BaseFixer, FixResult } from './base-fixer';
-import { Issue } from '../types';
+import { Issue, IssueType } from '../types';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
@@ -9,6 +9,15 @@ export class CleanupFixer extends BaseFixer {
   name = 'cleanup-fixer';
 
   canFix(issue: Issue): boolean {
+    // Use type-safe matching instead of string matching
+    if (issue.type) {
+      return [
+        IssueType.TODO_COMMENT,
+        IssueType.FIXME_COMMENT
+      ].includes(issue.type);
+    }
+
+    // Fallback to message matching for backward compatibility during migration
     return issue.message.includes('TODO') ||
            issue.message.includes('FIXME') ||
            issue.message.includes('commented out code');

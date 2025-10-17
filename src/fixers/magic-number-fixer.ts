@@ -1,5 +1,5 @@
 import { BaseFixer, FixResult } from './base-fixer';
-import { Issue } from '../types';
+import { Issue, IssueType } from '../types';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
@@ -9,6 +9,12 @@ export class MagicNumberFixer extends BaseFixer {
   name = 'magic-number-fixer';
 
   canFix(issue: Issue): boolean {
+    // Use type-safe matching instead of string matching
+    if (issue.type) {
+      return issue.type === IssueType.MAGIC_NUMBER;
+    }
+
+    // Fallback to message matching for backward compatibility during migration
     return issue.message.includes('Magic number') ||
            issue.message.includes('magic number');
   }

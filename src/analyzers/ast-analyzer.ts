@@ -1,6 +1,7 @@
 import * as parser from '@babel/parser';
 import traverse from '@babel/traverse';
 import * as fs from 'fs';
+import { ASTHelpers } from '../utils/ast-helpers';
 
 export interface FunctionInfo {
   name: string;
@@ -58,13 +59,13 @@ export class ASTAnalyzer {
 
   private extractFunctionInfo(path: any, functions: FunctionInfo[]): void {
     const node = path.node;
-    const name = this.getFunctionName(node, path);
+    const name = ASTHelpers.getFunctionName(node, path);
     const line = node.loc?.start.line || 0;
     const column = node.loc?.start.column || 0;
-    const linesOfCode = this.calculateLOC(node);
+    const linesOfCode = ASTHelpers.calculateLOC(node);
     const parameters = node.params?.length || 0;
     const isAsync = node.async || false;
-    const hasErrorHandling = this.checkErrorHandling(path);
+    const hasErrorHandling = ASTHelpers.hasErrorHandling(path);
 
     functions.push({
       name,
@@ -77,49 +78,7 @@ export class ASTAnalyzer {
     });
   }
 
-  private getFunctionName(node: any, path: any): string {
-    if (node.id?.name) return node.id.name;
-    if (path.parent?.id?.name) return path.parent.id.name;
-    if (path.parent?.key?.name) return path.parent.key.name;
-    return '<anonymous>';
-  }
-
-  private calculateLOC(node: any): number {
-    if (!node.loc) return 0;
-    return node.loc.end.line - node.loc.start.line + 1;
-  }
-
-  private checkErrorHandling(path: any): boolean {
-    let hasTryCatch = false;
-
-    path.traverse({
-      TryStatement: () => {
-        hasTryCatch = true;
-      }
-    });
-
-    return hasTryCatch;
-  }
-
   calculateCyclomaticComplexity(node: any): number {
-    let complexity = 1;
-
-    traverse(node, {
-      IfStatement: () => complexity++,
-      ConditionalExpression: () => complexity++,
-      ForStatement: () => complexity++,
-      WhileStatement: () => complexity++,
-      DoWhileStatement: () => complexity++,
-      SwitchCase: (path) => {
-        if (path.node.test) complexity++;
-      },
-      LogicalExpression: (path) => {
-        if (path.node.operator === '&&' || path.node.operator === '||') {
-          complexity++;
-        }
-      }
-    });
-
-    return complexity;
+    return ASTHelpers.calculateCyclomaticComplexity(node);
   }
 }
