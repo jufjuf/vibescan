@@ -1,5 +1,5 @@
 import traverse from '@babel/traverse';
-import { Issue, IssueSeverity, IssueCategory } from '../types';
+import { Issue, IssueSeverity, IssueCategory, IssueType } from '../types';
 import { ASTAnalysis } from '../analyzers/ast-analyzer';
 
 export class SecurityScanner {
@@ -23,24 +23,25 @@ export class SecurityScanner {
     const reportedLines = new Set<number>();
 
     const patterns = [
-      { regex: /api[_-]?key\s*[:=]\s*["'][^"']{20,}["']/i, msg: 'Hardcoded API key' },
-      { regex: /password\s*[:=]\s*["'][^"']+["']/i, msg: 'Hardcoded password' },
-      { regex: /secret\s*[:=]\s*["'][^"']{20,}["']/i, msg: 'Hardcoded secret' },
-      { regex: /token\s*[:=]\s*["'][^"']{20,}["']/i, msg: 'Hardcoded token' },
-      { regex: /sk-[a-zA-Z0-9]{20,}/i, msg: 'OpenAI API key exposed' },
-      { regex: /ghp_[a-zA-Z0-9]{36}/i, msg: 'GitHub personal access token' },
-      { regex: /AKIA[0-9A-Z]{16}/i, msg: 'AWS access key' }
+      { regex: /api[_-]?key\s*[:=]\s*["'][^"']{20,}["']/i, msg: 'Hardcoded API key', type: IssueType.HARDCODED_API_KEY },
+      { regex: /password\s*[:=]\s*["'][^"']+["']/i, msg: 'Hardcoded password', type: IssueType.HARDCODED_PASSWORD },
+      { regex: /secret\s*[:=]\s*["'][^"']{20,}["']/i, msg: 'Hardcoded secret', type: IssueType.HARDCODED_SECRET },
+      { regex: /token\s*[:=]\s*["'][^"']{20,}["']/i, msg: 'Hardcoded token', type: IssueType.HARDCODED_TOKEN },
+      { regex: /sk-[a-zA-Z0-9]{20,}/i, msg: 'OpenAI API key exposed', type: IssueType.HARDCODED_API_KEY },
+      { regex: /ghp_[a-zA-Z0-9]{36}/i, msg: 'GitHub personal access token', type: IssueType.HARDCODED_TOKEN },
+      { regex: /AKIA[0-9A-Z]{16}/i, msg: 'AWS access key', type: IssueType.HARDCODED_API_KEY }
     ];
 
     lines.forEach((line, idx) => {
       // Skip if this line already reported
       if (reportedLines.has(idx)) return;
 
-      for (const { regex, msg } of patterns) {
+      for (const { regex, msg, type } of patterns) {
         if (regex.test(line)) {
           issues.push({
             category: IssueCategory.SECURITY,
             severity: IssueSeverity.CRITICAL,
+            type,
             message: msg + ' found',
             file,
             line: idx + 1,
@@ -66,6 +67,7 @@ export class SecurityScanner {
           issues.push({
             category: IssueCategory.SECURITY,
             severity: IssueSeverity.MEDIUM,
+            type: IssueType.SQL_INJECTION,
             message: 'SQL injection risk - using template literals for queries',
             file,
             line: path.node.loc?.start.line || 0,
@@ -78,6 +80,7 @@ export class SecurityScanner {
           issues.push({
             category: IssueCategory.SECURITY,
             severity: IssueSeverity.MEDIUM,
+            type: IssueType.SQL_INJECTION,
             message: 'SQL injection risk - string concatenation in query',
             file,
             line: path.node.loc?.start.line || 0,
@@ -101,6 +104,7 @@ export class SecurityScanner {
           issues.push({
             category: IssueCategory.SECURITY,
             severity: IssueSeverity.CRITICAL,
+            type: IssueType.EVAL_USAGE,
             message: 'Use of eval() detected - major security risk',
             file,
             line: path.node.loc?.start.line || 0,
@@ -112,6 +116,7 @@ export class SecurityScanner {
           issues.push({
             category: IssueCategory.SECURITY,
             severity: IssueSeverity.HIGH,
+            type: IssueType.FUNCTION_CONSTRUCTOR,
             message: 'Use of Function() constructor detected',
             file,
             line: path.node.loc?.start.line || 0,
@@ -125,6 +130,7 @@ export class SecurityScanner {
           issues.push({
             category: IssueCategory.SECURITY,
             severity: IssueSeverity.MEDIUM,
+            type: IssueType.XSS_VULNERABILITY,
             message: 'Potential XSS - using innerHTML',
             file,
             line: path.node.loc?.start.line || 0,
@@ -140,6 +146,7 @@ export class SecurityScanner {
           issues.push({
             category: IssueCategory.SECURITY,
             severity: IssueSeverity.MEDIUM,
+            type: IssueType.XSS_VULNERABILITY,
             message: 'Potential XSS - using innerHTML',
             file,
             line: path.node.loc?.start.line || 0,
@@ -157,13 +164,14 @@ export class SecurityScanner {
     const lines = code.split('\n');
 
     // ReDoS patterns: nested quantifiers
-    const redosPattern = /\/.*(\ *\+|\+\*|\+\+|\*\*).*\//;
+    const redosPattern = /\/.*(\*\+|\+\*|\+\+|\*\*).*\//;
 
     lines.forEach((line, idx) => {
       if (redosPattern.test(line)) {
         issues.push({
           category: IssueCategory.SECURITY,
           severity: IssueSeverity.MEDIUM,
+          type: IssueType.REDOS_VULNERABILITY,
           message: 'Potential ReDoS vulnerability - nested quantifiers',
           file,
           line: idx + 1,
@@ -194,6 +202,7 @@ export class SecurityScanner {
             issues.push({
               category: IssueCategory.SECURITY,
               severity: IssueSeverity.MEDIUM,
+              type: IssueType.MISSING_INPUT_VALIDATION,
               message: 'User input used without validation',
               file,
               line: path.node.loc?.start.line || 0,

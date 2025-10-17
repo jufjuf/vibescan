@@ -1,4 +1,5 @@
 import { ScanResult } from '../types';
+import * as fs from 'fs';
 
 export class JSONReporter {
   report(result: ScanResult): string {
@@ -6,7 +7,6 @@ export class JSONReporter {
   }
 
   writeToFile(result: ScanResult, filePath: string): void {
-    const fs = require('fs');
     fs.writeFileSync(filePath, this.report(result), 'utf-8');
   }
 }

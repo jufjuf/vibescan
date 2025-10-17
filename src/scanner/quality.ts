@@ -1,7 +1,8 @@
 import traverse from '@babel/traverse';
-import { Issue, IssueSeverity, IssueCategory, DEFAULT_RULES } from '../types';
+import { Issue, IssueSeverity, IssueCategory, IssueType, DEFAULT_RULES } from '../types';
 import { ComplexityAnalyzer } from '../analyzers/complexity';
 import { ASTAnalysis } from '../analyzers/ast-analyzer';
+import { ASTHelpers } from '../utils/ast-helpers';
 
 export class QualityScanner {
   private complexityAnalyzer: ComplexityAnalyzer;
@@ -28,10 +29,17 @@ export class QualityScanner {
     const lines = code.split('\n');
 
     lines.forEach((line, idx) => {
-      if (/\/\/\s*(TODO|FIXME|HACK|XXX)/i.test(line)) {
+      const match = line.match(/\/\/\s*(TODO|FIXME|HACK|XXX)/i);
+      if (match) {
+        const keyword = match[1].toUpperCase();
+        const type = (keyword === 'TODO' || keyword === 'HACK' || keyword === 'XXX')
+          ? IssueType.TODO_COMMENT
+          : IssueType.FIXME_COMMENT;
+
         issues.push({
           category: IssueCategory.CODE_QUALITY,
           severity: IssueSeverity.INFO,
+          type,
           message: 'TODO/FIXME comment found',
           file,
           line: idx + 1,
@@ -59,21 +67,15 @@ export class QualityScanner {
   }
 
   private checkFunctionComplexity(path: any, file: string, issues: Issue[]): void {
-    // Simplified - just count nested if statements
     const node = path.node;
-    let complexity = 0;
-
-    path.traverse({
-      IfStatement: () => { complexity++; },
-      ForStatement: () => { complexity++; },
-      WhileStatement: () => { complexity++; }
-    });
+    const complexity = ASTHelpers.calculateCyclomaticComplexity(node);
 
     if (complexity > DEFAULT_RULES.maxComplexity * 1.5) {
-      const name = this.getFunctionName(node, path);
+      const name = ASTHelpers.getFunctionName(node, path);
       issues.push({
         category: IssueCategory.CODE_QUALITY,
         severity: IssueSeverity.MEDIUM,
+        type: IssueType.HIGH_COMPLEXITY,
         message: `High complexity (${complexity} branches)`,
         file,
         line: node.loc?.start.line || 0,
@@ -102,10 +104,11 @@ export class QualityScanner {
     const paramCount = node.params?.length || 0;
 
     if (paramCount > DEFAULT_RULES.maxParameters) {
-      const name = this.getFunctionName(node, path);
+      const name = ASTHelpers.getFunctionName(node, path);
       issues.push({
         category: IssueCategory.CODE_QUALITY,
         severity: IssueSeverity.LOW,
+        type: IssueType.TOO_MANY_PARAMETERS,
         message: `Too many parameters (${paramCount})`,
         file,
         line: node.loc?.start.line || 0,
@@ -133,6 +136,7 @@ export class QualityScanner {
         issues.push({
           category: IssueCategory.CODE_QUALITY,
           severity: IssueSeverity.LOW,
+          type: IssueType.DUPLICATE_CODE,
           message: `Duplicate code detected (${locations.length} occurrences)`,
           file,
           line: locations[0],
@@ -143,12 +147,5 @@ export class QualityScanner {
     });
 
     return issues;
-  }
-
-  private getFunctionName(node: any, path: any): string {
-    if (node.id?.name) return node.id.name;
-    if (path.parent?.id?.name) return path.parent.id.name;
-    if (path.parent?.key?.name) return path.parent.key.name;
-    return '<anonymous>';
   }
 }
