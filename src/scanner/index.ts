@@ -12,6 +12,7 @@ export class Scanner {
   private securityScanner: SecurityScanner;
   private aiPatternScanner: AIPatternScanner;
   private qualityScanner: QualityScanner;
+  private skippedFiles: Array<{ file: string; reason: string }> = [];
 
   constructor() {
     this.astAnalyzer = new ASTAnalyzer();
@@ -24,15 +25,24 @@ export class Scanner {
     const files = await this.findFiles(options.directory);
     const allIssues: Issue[] = [];
     let filesScanned = 0;
+    this.skippedFiles = [];
 
     for (const file of files) {
       if (this.shouldIgnore(file, options.ignore || [])) {
         continue;
       }
 
-      const issues = this.scanFile(file);
+      if (options.verbose) {
+        process.stdout.write(`\rScanning: ${filesScanned + 1}/${files.length} files...`);
+      }
+
+      const issues = this.scanFile(file, options);
       allIssues.push(...issues);
       filesScanned++;
+    }
+
+    if (options.verbose && filesScanned > 0) {
+      process.stdout.write('\n');
     }
 
     return this.buildResult(filesScanned, allIssues);
@@ -64,22 +74,32 @@ export class Scanner {
     return [...new Set(files)];
   }
 
-  private scanFile(filePath: string): Issue[] {
+  private scanFile(filePath: string, options: ScanOptions): Issue[] {
     try {
       const analysis = this.astAnalyzer.parseFile(filePath);
       if (!analysis) {
+        if (options.verbose) {
+          console.warn(`\n⚠️  Could not parse ${filePath} - skipping`);
+        }
+        this.skippedFiles.push({ file: filePath, reason: 'Parse failed' });
         return [];
       }
 
       const issues: Issue[] = [];
 
-      issues.push(...this.securityScanner.scanFile(filePath, analysis.rawAST));
-      issues.push(...this.aiPatternScanner.scanFile(filePath, analysis.rawAST));
-      issues.push(...this.qualityScanner.scanFile(filePath, analysis.rawAST));
+      issues.push(...this.securityScanner.scanFile(filePath, analysis));
+      issues.push(...this.aiPatternScanner.scanFile(filePath, analysis));
+      issues.push(...this.qualityScanner.scanFile(filePath, analysis));
 
       return issues;
     } catch (error) {
-      // Skip files that can't be parsed
+      if (options.verbose) {
+        console.error(`\n❌ Error scanning ${filePath}: ${error instanceof Error ? error.message : error}`);
+      }
+      this.skippedFiles.push({
+        file: filePath,
+        reason: error instanceof Error ? error.message : 'Unknown error'
+      });
       return [];
     }
   }
@@ -99,7 +119,8 @@ export class Scanner {
       issues,
       securityScore: this.calculateScore(securityIssues, filesScanned),
       qualityScore: this.calculateScore(qualityIssues, filesScanned),
-      aiPatternScore: this.calculateScore(aiPatternIssues, filesScanned)
+      aiPatternScore: this.calculateScore(aiPatternIssues, filesScanned),
+      skippedFiles: this.skippedFiles.length > 0 ? this.skippedFiles : undefined
     };
   }
 

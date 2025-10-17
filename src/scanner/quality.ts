@@ -1,7 +1,7 @@
-import * as fs from 'fs';
 import traverse from '@babel/traverse';
-import { Issue, IssueSeverity, IssueCategory } from '../types';
+import { Issue, IssueSeverity, IssueCategory, DEFAULT_RULES } from '../types';
 import { ComplexityAnalyzer } from '../analyzers/complexity';
+import { ASTAnalysis } from '../analyzers/ast-analyzer';
 
 export class QualityScanner {
   private complexityAnalyzer: ComplexityAnalyzer;
@@ -10,9 +10,10 @@ export class QualityScanner {
     this.complexityAnalyzer = new ComplexityAnalyzer();
   }
 
-  scanFile(filePath: string, ast: any): Issue[] {
+  scanFile(filePath: string, analysis: ASTAnalysis): Issue[] {
     const issues: Issue[] = [];
-    const code = fs.readFileSync(filePath, 'utf-8');
+    const code = analysis.sourceCode;
+    const ast = analysis.rawAST;
 
     issues.push(...this.detectTODOs(filePath, code));
     issues.push(...this.detectComplexFunctions(filePath, ast));
@@ -68,7 +69,7 @@ export class QualityScanner {
       WhileStatement: () => { complexity++; }
     });
 
-    if (complexity > 15) {
+    if (complexity > DEFAULT_RULES.maxComplexity * 1.5) {
       const name = this.getFunctionName(node, path);
       issues.push({
         category: IssueCategory.CODE_QUALITY,
@@ -100,7 +101,7 @@ export class QualityScanner {
     const node = path.node;
     const paramCount = node.params?.length || 0;
 
-    if (paramCount > 5) {
+    if (paramCount > DEFAULT_RULES.maxParameters) {
       const name = this.getFunctionName(node, path);
       issues.push({
         category: IssueCategory.CODE_QUALITY,

@@ -1,11 +1,12 @@
-import * as fs from 'fs';
 import traverse from '@babel/traverse';
 import { Issue, IssueSeverity, IssueCategory } from '../types';
+import { ASTAnalysis } from '../analyzers/ast-analyzer';
 
 export class SecurityScanner {
-  scanFile(filePath: string, ast: any): Issue[] {
+  scanFile(filePath: string, analysis: ASTAnalysis): Issue[] {
     const issues: Issue[] = [];
-    const code = fs.readFileSync(filePath, 'utf-8');
+    const code = analysis.sourceCode;
+    const ast = analysis.rawAST;
 
     issues.push(...this.detectHardcodedSecrets(filePath, code));
     issues.push(...this.detectSQLInjection(filePath, ast));
@@ -19,6 +20,7 @@ export class SecurityScanner {
   private detectHardcodedSecrets(file: string, code: string): Issue[] {
     const issues: Issue[] = [];
     const lines = code.split('\n');
+    const reportedLines = new Set<number>();
 
     const patterns = [
       { regex: /api[_-]?key\s*[:=]\s*["'][^"']{20,}["']/i, msg: 'Hardcoded API key' },
@@ -31,7 +33,10 @@ export class SecurityScanner {
     ];
 
     lines.forEach((line, idx) => {
-      patterns.forEach(({ regex, msg }) => {
+      // Skip if this line already reported
+      if (reportedLines.has(idx)) return;
+
+      for (const { regex, msg } of patterns) {
         if (regex.test(line)) {
           issues.push({
             category: IssueCategory.SECURITY,
@@ -42,8 +47,10 @@ export class SecurityScanner {
             suggestion: 'Move secrets to environment variables',
             code: line.trim()
           });
+          reportedLines.add(idx);
+          break; // Only report first match per line
         }
-      });
+      }
     });
 
     return issues;
@@ -150,7 +157,7 @@ export class SecurityScanner {
     const lines = code.split('\n');
 
     // ReDoS patterns: nested quantifiers
-    const redosPattern = /\/.*(\*\+|\+\*|\+\+|\*\*).*\//;
+    const redosPattern = /\/.*(\ *\+|\+\*|\+\+|\*\*).*\//;
 
     lines.forEach((line, idx) => {
       if (redosPattern.test(line)) {
