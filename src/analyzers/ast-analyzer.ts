@@ -15,13 +15,15 @@ export interface FunctionInfo {
 export interface ASTAnalysis {
   functions: FunctionInfo[];
   rawAST: any;
+  sourceCode: string;
 }
 
 export class ASTAnalyzer {
   parseFile(filePath: string): ASTAnalysis | null {
     try {
       const code = fs.readFileSync(filePath, 'utf-8');
-      return this.parseCode(code);
+      const result = this.parseCode(code);
+      return result ? { ...result, sourceCode: code } : null;
     } catch (error) {
       return null;
     }
@@ -48,7 +50,7 @@ export class ASTAnalyzer {
         }
       });
 
-      return { functions, rawAST: ast };
+      return { functions, rawAST: ast, sourceCode: code };
     } catch (error) {
       return null;
     }

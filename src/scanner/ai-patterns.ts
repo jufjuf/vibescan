@@ -1,29 +1,25 @@
 import traverse from '@babel/traverse';
-import { Issue, IssueSeverity, IssueCategory } from '../types';
-import { ASTAnalyzer } from '../analyzers/ast-analyzer';
+import { Issue, IssueSeverity, IssueCategory, DEFAULT_RULES } from '../types';
+import { ASTAnalysis } from '../analyzers/ast-analyzer';
 import { ComplexityAnalyzer } from '../analyzers/complexity';
 
 export class AIPatternScanner {
-  private astAnalyzer: ASTAnalyzer;
   private complexityAnalyzer: ComplexityAnalyzer;
 
   constructor() {
-    this.astAnalyzer = new ASTAnalyzer();
     this.complexityAnalyzer = new ComplexityAnalyzer();
   }
 
-  scanFile(filePath: string, ast: any): Issue[] {
+  scanFile(filePath: string, analysis: ASTAnalysis): Issue[] {
     const issues: Issue[] = [];
+    const ast = analysis.rawAST;
 
-    const analysis = this.astAnalyzer.parseCode('');
-    if (analysis) {
-      issues.push(...this.detectLongFunctions(filePath, ast));
-      issues.push(...this.detectHighComplexity(filePath, ast));
-      issues.push(...this.detectMissingErrorHandling(filePath, ast));
-      issues.push(...this.detectMagicNumbers(filePath, ast));
-      issues.push(...this.detectDeepNesting(filePath, ast));
-      issues.push(...this.detectInconsistentNaming(filePath, ast));
-    }
+    issues.push(...this.detectLongFunctions(filePath, ast));
+    issues.push(...this.detectHighComplexity(filePath, ast));
+    issues.push(...this.detectMissingErrorHandling(filePath, ast));
+    issues.push(...this.detectMagicNumbers(filePath, ast));
+    issues.push(...this.detectDeepNesting(filePath, ast));
+    issues.push(...this.detectInconsistentNaming(filePath, ast));
 
     return issues;
   }
@@ -53,7 +49,7 @@ export class AIPatternScanner {
     const lines = node.loc.end.line - node.loc.start.line + 1;
     const name = this.getFunctionName(node, path);
 
-    if (lines > 50) {
+    if (lines > DEFAULT_RULES.maxFunctionLength) {
       issues.push({
         category: IssueCategory.AI_PATTERN,
         severity: IssueSeverity.MEDIUM,
@@ -85,7 +81,7 @@ export class AIPatternScanner {
     const complexity = this.calculateComplexity(path);
     const name = this.getFunctionName(node, path);
 
-    if (complexity > 10) {
+    if (complexity > DEFAULT_RULES.maxComplexity) {
       issues.push({
         category: IssueCategory.AI_PATTERN,
         severity: IssueSeverity.MEDIUM,
@@ -198,7 +194,7 @@ export class AIPatternScanner {
     traverse(ast, {
       FunctionDeclaration: (path) => {
         const depth = this.measureNestingDepth(path);
-        if (depth > 3) {
+        if (depth > DEFAULT_RULES.maxNestingDepth) {
           const name = this.getFunctionName(path.node, path);
           issues.push({
             category: IssueCategory.AI_PATTERN,
@@ -243,26 +239,87 @@ export class AIPatternScanner {
 
   private detectInconsistentNaming(file: string, ast: any): Issue[] {
     const issues: Issue[] = [];
-    const identifiers: { name: string; style: string }[] = [];
+    const userIdentifiers: { name: string; style: string }[] = [];
 
+    // Built-in identifiers to ignore
+    const builtins = new Set([
+      'console', 'process', 'require', 'exports', 'module', 'Buffer',
+      'global', '__dirname', '__filename', 'setTimeout', 'setInterval',
+      'clearTimeout', 'clearInterval', 'Promise', 'Array', 'Object',
+      'String', 'Number', 'Boolean', 'Date', 'Math', 'JSON', 'Error',
+      'Function', 'RegExp', 'Map', 'Set', 'Symbol', 'parseInt', 'parseFloat',
+      'isNaN', 'isFinite', 'undefined', 'null', 'true', 'false', 'this',
+      'arguments', 'eval', 'NaN', 'Infinity'
+    ]);
+
+    // Only check user-defined variables, functions, and classes
     traverse(ast, {
-      Identifier: (path) => {
-        const name = path.node.name;
-        const style = this.detectNamingStyle(name);
-        identifiers.push({ name, style });
+      VariableDeclarator: (path) => {
+        if (path.node.id.type === 'Identifier' && !builtins.has(path.node.id.name)) {
+          const name = path.node.id.name;
+          const style = this.detectNamingStyle(name);
+          if (style !== 'unknown') {
+            userIdentifiers.push({ name, style });
+          }
+        }
+      },
+      FunctionDeclaration: (path) => {
+        if (path.node.id && !builtins.has(path.node.id.name)) {
+          const name = path.node.id.name;
+          const style = this.detectNamingStyle(name);
+          if (style !== 'unknown') {
+            userIdentifiers.push({ name, style });
+          }
+        }
+      },
+      ClassDeclaration: (path) => {
+        if (path.node.id) {
+          const name = path.node.id.name;
+          const style = this.detectNamingStyle(name);
+          if (style !== 'unknown') {
+            userIdentifiers.push({ name, style });
+          }
+        }
       }
     });
 
-    const styles = new Set(identifiers.map(i => i.style));
-    if (styles.size > 2) {
+    // Only report if we have significant number of identifiers with real inconsistency
+    if (userIdentifiers.length < 10) {
+      return issues; // Too few to determine pattern
+    }
+
+    const styleCounts = new Map<string, number>();
+    userIdentifiers.forEach(({ style }) => {
+      styleCounts.set(style, (styleCounts.get(style) || 0) + 1);
+    });
+
+    // Report only if there are 3+ styles, or 2 styles with significant usage of both
+    if (styleCounts.size >= 3) {
+      const styleList = Array.from(styleCounts.keys()).join(', ');
       issues.push({
         category: IssueCategory.AI_PATTERN,
         severity: IssueSeverity.LOW,
-        message: 'Inconsistent naming conventions detected',
+        message: `Inconsistent naming conventions: ${styleList}`,
         file,
         line: 1,
-        suggestion: 'Use consistent naming style (camelCase recommended)'
+        suggestion: 'Use consistent naming style throughout the file'
       });
+    } else if (styleCounts.size === 2) {
+      // Only report if both styles are used significantly (at least 30% each)
+      const counts = Array.from(styleCounts.values());
+      const minCount = Math.min(...counts);
+      const total = userIdentifiers.length;
+      if (minCount / total >= 0.3) {
+        const styleList = Array.from(styleCounts.keys()).join(' and ');
+        issues.push({
+          category: IssueCategory.AI_PATTERN,
+          severity: IssueSeverity.LOW,
+          message: `Mixed naming conventions: ${styleList}`,
+          file,
+          line: 1,
+          suggestion: 'Choose one naming style and use it consistently'
+        });
+      }
     }
 
     return issues;
@@ -280,6 +337,6 @@ export class AIPatternScanner {
     if (/^[A-Z][a-zA-Z0-9]*$/.test(name)) return 'PascalCase';
     if (/^[a-z][a-z0-9_]*$/.test(name)) return 'snake_case';
     if (/^[A-Z][A-Z0-9_]*$/.test(name)) return 'SCREAMING_SNAKE_CASE';
-    return 'mixed';
+    return 'unknown'; // Ignore names that don't match any convention
   }
 }
