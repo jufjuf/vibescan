@@ -1,0 +1,104 @@
+name: Update README Badges
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-badges:
+    name: Update VibeScan Badges
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install and Build
+        run: |
+          npm install
+          npm run build
+          npm link
+
+      - name: Run VibeScan
+        run: |
+          vibescan scan . --json -o vibescan-report.json || true
+
+      - name: Generate Badges
+        id: badges
+        run: |
+          # Parse scores
+          SECURITY_SCORE=$(jq '.securityScore' vibescan-report.json)
+          QUALITY_SCORE=$(jq '.qualityScore' vibescan-report.json)
+          AI_SCORE=$(jq '.aiPatternScore' vibescan-report.json)
+          TOTAL_ISSUES=$(jq '.totalIssues' vibescan-report.json)
+
+          # Determine colors
+          get_color() {
+            score=$1
+            if (( $(echo "$score >= 8" | bc -l) )); then
+              echo "brightgreen"
+            elif (( $(echo "$score >= 6" | bc -l) )); then
+              echo "green"
+            elif (( $(echo "$score >= 4" | bc -l) )); then
+              echo "yellow"
+            else
+              echo "red"
+            fi
+          }
+
+          SECURITY_COLOR=$(get_color $SECURITY_SCORE)
+          QUALITY_COLOR=$(get_color $QUALITY_SCORE)
+          AI_COLOR=$(get_color $AI_SCORE)
+
+          # Save to environment
+          echo "SECURITY_SCORE=$SECURITY_SCORE" >> $GITHUB_ENV
+          echo "SECURITY_COLOR=$SECURITY_COLOR" >> $GITHUB_ENV
+          echo "QUALITY_SCORE=$QUALITY_SCORE" >> $GITHUB_ENV
+          echo "QUALITY_COLOR=$QUALITY_COLOR" >> $GITHUB_ENV
+          echo "AI_SCORE=$AI_SCORE" >> $GITHUB_ENV
+          echo "AI_COLOR=$AI_COLOR" >> $GITHUB_ENV
+          echo "TOTAL_ISSUES=$TOTAL_ISSUES" >> $GITHUB_ENV
+
+      - name: Update README
+        run: |
+          # Create badge section if it doesn't exist
+          if ! grep -q "<!-- VIBESCAN-BADGES-START -->" README.md; then
+            # Add badges section after title
+            sed -i '1a\
+            \
+            <!-- VIBESCAN-BADGES-START -->\
+            <!-- VIBESCAN-BADGES-END -->' README.md
+          fi
+
+          # Generate badge markdown
+          BADGES="![Security Score](https://img.shields.io/badge/Security-${SECURITY_SCORE}%2F10-${SECURITY_COLOR}) "
+          BADGES+="![Quality Score](https://img.shields.io/badge/Quality-${QUALITY_SCORE}%2F10-${QUALITY_COLOR}) "
+          BADGES+="![AI Patterns](https://img.shields.io/badge/AI%20Patterns-${AI_SCORE}%2F10-${AI_COLOR}) "
+          BADGES+="![Total Issues](https://img.shields.io/badge/Issues-${TOTAL_ISSUES}-blue)"
+
+          # Update badges
+          sed -i "/<!-- VIBESCAN-BADGES-START -->/,/<!-- VIBESCAN-BADGES-END -->/c\
+          <!-- VIBESCAN-BADGES-START -->\n\
+          $BADGES\n\
+          <!-- VIBESCAN-BADGES-END -->" README.md
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: update VibeScan badges [skip ci]"
+            git push
+          fi

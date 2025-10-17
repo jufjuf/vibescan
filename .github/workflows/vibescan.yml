@@ -1,0 +1,224 @@
+name: VibeScan Code Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  statuses: write
+
+jobs:
+  vibescan:
+    name: Run VibeScan Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd $GITHUB_WORKSPACE
+          npm install -g vibescan || echo "Installing from local..."
+
+      - name: Install VibeScan locally
+        run: |
+          npm install
+          npm run build
+          npm link
+
+      - name: Run VibeScan
+        id: scan
+        continue-on-error: true
+        run: |
+          vibescan scan . --json -o vibescan-report.json -v
+          echo "scan_completed=true" >> $GITHUB_OUTPUT
+
+      - name: Parse Results
+        id: parse
+        if: steps.scan.outputs.scan_completed == 'true'
+        run: |
+          # Extract metrics from JSON report
+          TOTAL_ISSUES=$(jq '.totalIssues' vibescan-report.json)
+          CRITICAL_ISSUES=$(jq '[.issues[] | select(.severity == "CRITICAL")] | length' vibescan-report.json)
+          HIGH_ISSUES=$(jq '[.issues[] | select(.severity == "HIGH")] | length' vibescan-report.json)
+          SECURITY_SCORE=$(jq '.securityScore' vibescan-report.json)
+          QUALITY_SCORE=$(jq '.qualityScore' vibescan-report.json)
+          AI_SCORE=$(jq '.aiPatternScore' vibescan-report.json)
+          FILES_SCANNED=$(jq '.filesScanned' vibescan-report.json)
+
+          echo "total_issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "critical_issues=$CRITICAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "high_issues=$HIGH_ISSUES" >> $GITHUB_OUTPUT
+          echo "security_score=$SECURITY_SCORE" >> $GITHUB_OUTPUT
+          echo "quality_score=$QUALITY_SCORE" >> $GITHUB_OUTPUT
+          echo "ai_score=$AI_SCORE" >> $GITHUB_OUTPUT
+          echo "files_scanned=$FILES_SCANNED" >> $GITHUB_OUTPUT
+
+      - name: Generate Badge Data
+        id: badges
+        if: steps.parse.outputs.total_issues
+        run: |
+          # Security badge color
+          SECURITY_SCORE=${{ steps.parse.outputs.security_score }}
+          if (( $(echo "$SECURITY_SCORE >= 8" | bc -l) )); then
+            SECURITY_COLOR="brightgreen"
+          elif (( $(echo "$SECURITY_SCORE >= 6" | bc -l) )); then
+            SECURITY_COLOR="green"
+          elif (( $(echo "$SECURITY_SCORE >= 4" | bc -l) )); then
+            SECURITY_COLOR="yellow"
+          else
+            SECURITY_COLOR="red"
+          fi
+
+          echo "security_color=$SECURITY_COLOR" >> $GITHUB_OUTPUT
+          echo "security_badge=![Security Score](https://img.shields.io/badge/Security-${SECURITY_SCORE}%2F10-${SECURITY_COLOR})" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('vibescan-report.json', 'utf8'));
+
+            const totalIssues = report.totalIssues;
+            const criticalIssues = report.issues.filter(i => i.severity === 'CRITICAL').length;
+            const highIssues = report.issues.filter(i => i.severity === 'HIGH').length;
+            const mediumIssues = report.issues.filter(i => i.severity === 'MEDIUM').length;
+            const lowIssues = report.issues.filter(i => i.severity === 'LOW').length;
+
+            // Group issues by category
+            const securityIssues = report.issues.filter(i => i.category === 'Security');
+            const aiPatternIssues = report.issues.filter(i => i.category === 'AI Pattern');
+            const qualityIssues = report.issues.filter(i => i.category === 'Code Quality');
+
+            // Format scores
+            const securityEmoji = report.securityScore >= 7 ? '✅' : report.securityScore >= 4 ? '⚠️' : '❌';
+            const qualityEmoji = report.qualityScore >= 7 ? '✅' : report.qualityScore >= 4 ? '⚠️' : '❌';
+            const aiEmoji = report.aiPatternScore >= 7 ? '✅' : report.aiPatternScore >= 4 ? '⚠️' : '❌';
+
+            // Build comment body
+            let body = `## 🔍 VibeScan Analysis Results\n\n`;
+            body += `**Files Scanned:** ${report.filesScanned}  \n`;
+            body += `**Total Issues:** ${totalIssues}\n\n`;
+
+            // Scores
+            body += `### 📊 Scores\n\n`;
+            body += `| Category | Score | Status |\n`;
+            body += `|----------|-------|--------|\n`;
+            body += `| 🔒 Security | ${report.securityScore}/10 | ${securityEmoji} |\n`;
+            body += `| 📊 Quality | ${report.qualityScore}/10 | ${qualityEmoji} |\n`;
+            body += `| 🤖 AI Patterns | ${report.aiPatternScore}/10 | ${aiEmoji} |\n\n`;
+
+            // Issue breakdown
+            body += `### ⚠️ Issue Breakdown\n\n`;
+            body += `| Severity | Count |\n`;
+            body += `|----------|-------|\n`;
+            body += `| 🔴 Critical | ${criticalIssues} |\n`;
+            body += `| 🟠 High | ${highIssues} |\n`;
+            body += `| 🟡 Medium | ${mediumIssues} |\n`;
+            body += `| 🔵 Low | ${lowIssues} |\n\n`;
+
+            // Category breakdown
+            body += `| Category | Count |\n`;
+            body += `|----------|-------|\n`;
+            body += `| 🔒 Security | ${securityIssues.length} |\n`;
+            body += `| 🤖 AI Patterns | ${aiPatternIssues.length} |\n`;
+            body += `| 📊 Quality | ${qualityIssues.length} |\n\n`;
+
+            // Top issues
+            if (criticalIssues > 0) {
+              body += `### 🚨 Critical Issues\n\n`;
+              const critical = report.issues.filter(i => i.severity === 'CRITICAL').slice(0, 5);
+              critical.forEach(issue => {
+                body += `- **${issue.message}**\n`;
+                body += `  \`${issue.file}:${issue.line}\`\n`;
+                if (issue.suggestion) {
+                  body += `  💡 ${issue.suggestion}\n`;
+                }
+                body += `\n`;
+              });
+            }
+
+            // Recommendations
+            body += `### 💡 Recommendations\n\n`;
+            if (criticalIssues > 0) {
+              body += `- ⚠️ **${criticalIssues} critical security issue(s)** must be fixed before merging\n`;
+            }
+            if (report.securityScore < 7) {
+              body += `- 🔒 Security score is below 7/10 - review security issues\n`;
+            }
+            if (report.aiPatternScore < 5) {
+              body += `- 🤖 AI patterns score is low - code may need refactoring\n`;
+            }
+            body += `- 🔧 Run \`vibescan scan . --fix\` to auto-fix ${report.issues.filter(i => i.category === 'Code Quality' || i.message.includes('Magic number')).length} issues\n\n`;
+
+            body += `---\n`;
+            body += `🤖 Generated by [VibeScan](https://github.com/jufjuf/vibescan) • [View Full Report](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID})`;
+
+            // Post comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+
+      - name: Update Status Check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const criticalIssues = ${{ steps.parse.outputs.critical_issues || 0 }};
+            const state = criticalIssues > 0 ? 'failure' : 'success';
+            const description = criticalIssues > 0
+              ? `${criticalIssues} critical issue(s) found`
+              : 'No critical issues found';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: state,
+              target_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+              description: description,
+              context: 'VibeScan'
+            });
+
+      - name: Fail on Critical Issues
+        if: steps.parse.outputs.critical_issues > 0
+        run: |
+          echo "::error::Found ${{ steps.parse.outputs.critical_issues }} critical security issue(s)"
+          echo "::error::Review the issues above and fix them before merging"
+          exit 1
+
+      - name: Upload Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibescan-report
+          path: vibescan-report.json
+          retention-days: 30
+
+      - name: Upload to GitHub Pages (optional)
+        if: github.ref == 'refs/heads/main' && steps.scan.outputs.scan_completed == 'true'
+        run: |
+          echo "Upload report to GitHub Pages for historical tracking"
+          # This would require GitHub Pages setup
