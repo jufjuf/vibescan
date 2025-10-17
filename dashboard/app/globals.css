@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode - VibeScan Brand Colors */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Brand Teal as Primary */
+    --primary: 174 80% 40%;  /* #14B8A6 - Brand Teal */
+    --primary-foreground: 0 0% 100%;
+
+    /* Light backgrounds */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Electric Coral as Accent */
+    --accent: 24 95% 53%;  /* #F97316 - Electric Coral */
+    --accent-foreground: 0 0% 100%;
+
+    /* Error Red */
+    --destructive: 0 84% 60%;  /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 174 80% 40%;  /* Match primary */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Dark Mode - VibeScan Brand Colors */
+    --background: 222.2 47.4% 7%;  /* #0F172A - slate-900 */
+    --foreground: 210 40% 98%;
+    --card: 215 25% 15%;  /* #1E293B - slate-800 */
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 47.4% 7%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Lighter Brand Teal for dark mode */
+    --primary: 174 77% 45%;  /* Slightly lighter teal */
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 215 20% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 20% 20%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+
+    /* Electric Coral stays vibrant in dark */
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Error Red */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 20% 26%;
+    --input: 215 20% 26%;
+    --ring: 174 77% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .animate-in {
+    animation: enter 0.3s ease-out;
+  }
+
+  .slide-in-from-left {
+    animation: slide-in-left 0.3s ease-out;
+  }
+
+  .slide-in-from-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+}
+
+/* Scrollbar styling */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
