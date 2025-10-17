@@ -17,8 +17,8 @@ describe('AIPatternScanner', () => {
       }
     `;
 
-    const ast = astAnalyzer.parseCode(longFunction);
-    const issues = scanner.scanFile('test.js', ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(longFunction);
+    const issues = scanner.scanFile('test.js', analysis!);
 
     const longFuncIssues = issues.filter(i => i.message.includes('too long'));
     expect(longFuncIssues.length).toBeGreaterThan(0);
@@ -57,8 +57,8 @@ describe('AIPatternScanner', () => {
       }
     `;
 
-    const ast = astAnalyzer.parseCode(complexCode);
-    const issues = scanner.scanFile('test.js', ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(complexCode);
+    const issues = scanner.scanFile('test.js', analysis!);
 
     const complexityIssues = issues.filter(i => i.message.includes('complexity'));
     expect(complexityIssues.length).toBeGreaterThan(0);
@@ -73,8 +73,8 @@ describe('AIPatternScanner', () => {
       }
     `;
 
-    const ast = astAnalyzer.parseCode(asyncCode);
-    const issues = scanner.scanFile('test.js', ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(asyncCode);
+    const issues = scanner.scanFile('test.js', analysis!);
 
     const errorHandlingIssues = issues.filter(i => i.message.includes('error handling'));
     expect(errorHandlingIssues.length).toBeGreaterThan(0);
@@ -90,8 +90,8 @@ describe('AIPatternScanner', () => {
       }
     `;
 
-    const ast = astAnalyzer.parseCode(magicNumberCode);
-    const issues = scanner.scanFile('test.js', ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(magicNumberCode);
+    const issues = scanner.scanFile('test.js', analysis!);
 
     const magicNumberIssues = issues.filter(i => i.message.includes('Magic number'));
     expect(magicNumberIssues.length).toBeGreaterThan(0);
@@ -106,8 +106,8 @@ describe('AIPatternScanner', () => {
       }
     `;
 
-    const ast = astAnalyzer.parseCode(commonNumbers);
-    const issues = scanner.scanFile('test.js', ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(commonNumbers);
+    const issues = scanner.scanFile('test.js', analysis!);
 
     const magicNumberIssues = issues.filter(i => i.message.includes('Magic number'));
     expect(magicNumberIssues.length).toBe(0);
@@ -130,8 +130,8 @@ describe('AIPatternScanner', () => {
       }
     `;
 
-    const ast = astAnalyzer.parseCode(deeplyNestedCode);
-    const issues = scanner.scanFile('test.js', ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(deeplyNestedCode);
+    const issues = scanner.scanFile('test.js', analysis!);
 
     const nestingIssues = issues.filter(i => i.message.includes('nesting'));
     expect(nestingIssues.length).toBeGreaterThan(0);

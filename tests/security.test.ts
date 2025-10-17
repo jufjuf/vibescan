@@ -32,8 +32,8 @@ describe('SecurityScanner', () => {
     const tempFile = path.join(tempDir, 'test.js');
     fs.writeFileSync(tempFile, code);
 
-    const ast = astAnalyzer.parseCode(code);
-    const issues = scanner.scanFile(tempFile, ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(code);
+    const issues = scanner.scanFile(tempFile, analysis!);
 
     const apiKeyIssues = issues.filter(i => i.message.includes('API key'));
     expect(apiKeyIssues.length).toBeGreaterThan(0);
@@ -48,8 +48,8 @@ describe('SecurityScanner', () => {
     const tempFile = path.join(tempDir, 'sql.js');
     fs.writeFileSync(tempFile, code);
 
-    const ast = astAnalyzer.parseCode(code);
-    const issues = scanner.scanFile(tempFile, ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(code);
+    const issues = scanner.scanFile(tempFile, analysis!);
 
     const sqlIssues = issues.filter(i => i.message.includes('SQL injection'));
     expect(sqlIssues.length).toBeGreaterThan(0);
@@ -63,8 +63,8 @@ describe('SecurityScanner', () => {
     const tempFile = path.join(tempDir, 'eval.js');
     fs.writeFileSync(tempFile, code);
 
-    const ast = astAnalyzer.parseCode(code);
-    const issues = scanner.scanFile(tempFile, ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(code);
+    const issues = scanner.scanFile(tempFile, analysis!);
 
     const evalIssues = issues.filter(i => i.message.includes('eval'));
     expect(evalIssues.length).toBeGreaterThan(0);
@@ -79,8 +79,8 @@ describe('SecurityScanner', () => {
     const tempFile = path.join(tempDir, 'xss.js');
     fs.writeFileSync(tempFile, code);
 
-    const ast = astAnalyzer.parseCode(code);
-    const issues = scanner.scanFile(tempFile, ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(code);
+    const issues = scanner.scanFile(tempFile, analysis!);
 
     const xssIssues = issues.filter(i => i.message.includes('XSS'));
     expect(xssIssues.length).toBeGreaterThan(0);
@@ -96,8 +96,8 @@ describe('SecurityScanner', () => {
     const tempFile = path.join(tempDir, 'secure.js');
     fs.writeFileSync(tempFile, code);
 
-    const ast = astAnalyzer.parseCode(code);
-    const issues = scanner.scanFile(tempFile, ast!.rawAST);
+    const analysis = astAnalyzer.parseCode(code);
+    const issues = scanner.scanFile(tempFile, analysis!);
 
     // Should have no critical security issues
     const criticalIssues = issues.filter(i => i.severity === 'CRITICAL');
