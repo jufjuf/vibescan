@@ -1,10 +1,18 @@
 # VibeScan
 
+<!-- VIBESCAN-BADGES-START -->
+<!-- VIBESCAN-BADGES-END -->
+
 **AI Code Security & Quality Auditor** - Detect vulnerabilities and anti-patterns in AI-generated code
 
 VibeScan is a CLI tool that scans JavaScript/TypeScript code for security vulnerabilities, code quality issues, and AI-specific anti-patterns. Research shows that 45% of AI-generated code has security flaws - VibeScan helps you catch them before deployment.
 
 ## Features
+
+✅ **Auto-Fix Issues** - Automatically fix security and quality issues
+✅ **GitHub Actions Integration** - CI/CD scanning with PR comments
+✅ **Web Dashboard** - Visual analytics and drill-down reports
+✅ **Smart Scanning** - AST-based analysis for accuracy
 
 ### Security Checks
 - Hardcoded secrets (API keys, passwords, tokens)
@@ -62,6 +70,25 @@ vibescan scan ./src --json
 vibescan scan ./src --json -o report.json
 ```
 
+### Auto-fix issues
+
+```bash
+# Preview fixes without applying them
+vibescan scan ./src --dry-run
+
+# Apply fixes automatically
+vibescan scan ./src --fix
+
+# Combine with other options
+vibescan scan ./src --fix --json -o report.json
+```
+
+Supports auto-fixing:
+- Hardcoded secrets → Environment variables
+- Magic numbers → Named constants
+- Missing error handlers → Try-catch blocks
+- TODO comments → Removed
+
 ### Initialize configuration
 
 ```bash
@@ -87,6 +114,38 @@ This creates a `.vibescan.json` file with default settings:
   }
 }
 ```
+
+## GitHub Actions Integration
+
+VibeScan integrates seamlessly with GitHub Actions for automated code quality checks in your CI/CD pipeline.
+
+### Quick Setup
+
+1. Copy the workflow files to your repository:
+```bash
+mkdir -p .github/workflows
+curl -o .github/workflows/vibescan.yml https://raw.githubusercontent.com/jufjuf/vibescan/main/.github/workflows/vibescan.yml
+curl -o .github/workflows/update-badges.yml https://raw.githubusercontent.com/jufjuf/vibescan/main/.github/workflows/update-badges.yml
+```
+
+2. Enable Actions permissions:
+   - Go to Settings → Actions → General
+   - Set "Workflow permissions" to "Read and write permissions"
+
+3. Add badge placeholders to your README:
+```markdown
+<!-- VIBESCAN-BADGES-START -->
+<!-- VIBESCAN-BADGES-END -->
+```
+
+### Features
+
+- **Automatic PR Comments** - Detailed scan results posted to pull requests
+- **Status Checks** - Block merges if critical issues found
+- **Badge Generation** - Auto-update README with latest scores
+- **Artifact Storage** - Keep scan reports for 30 days
+
+See [GITHUB_ACTIONS.md](docs/GITHUB_ACTIONS.md) for detailed setup and configuration.
 
 ## Example Output
 
@@ -196,12 +255,25 @@ VibeScan specifically targets these issues that are common in AI-generated code.
 
 ## Roadmap
 
-- [ ] Auto-fix functionality
-- [ ] GitHub Actions integration
-- [ ] Web dashboard
-- [ ] Custom rule configuration
+- [x] Auto-fix functionality
+- [x] GitHub Actions integration
+- [x] Web dashboard (structure complete, needs Tailwind fix)
+- [x] Custom rule configuration
 - [ ] Plugin system
 - [ ] IDE extensions (VS Code, IntelliJ)
+- [ ] npm package publishing
+- [ ] Performance optimizations
+
+## Security
+
+VibeScan takes security seriously. For information about security features and reporting vulnerabilities, see [SECURITY.md](SECURITY.md).
+
+**Key Security Features:**
+- AST-based code analysis (no code execution)
+- File path validation
+- Automatic backups before modifications
+- Rate limiting on API endpoints
+- Secure file upload handling
 
 ## Contributing
 
