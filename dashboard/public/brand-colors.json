@@ -1,0 +1,106 @@
+{
+  "brand": {
+    "teal": {
+      "hex": "#14B8A6",
+      "rgb": "20, 184, 166",
+      "hsl": "174, 80%, 40%",
+      "tailwind": "teal-500",
+      "usage": "Primary CTAs, links, brand elements, hover states"
+    },
+    "coral": {
+      "hex": "#F97316",
+      "rgb": "249, 115, 22",
+      "hsl": "24, 95%, 53%",
+      "tailwind": "orange-500",
+      "usage": "Secondary CTAs, highlights, notifications, badges"
+    },
+    "purple": {
+      "hex": "#8B5CF6",
+      "rgb": "139, 92, 246",
+      "hsl": "258, 90%, 66%",
+      "tailwind": "violet-500",
+      "usage": "AI features, premium indicators, gradient accents"
+    }
+  },
+  "semantic": {
+    "success": {
+      "hex": "#10B981",
+      "rgb": "16, 185, 129",
+      "hsl": "160, 84%, 39%",
+      "tailwind": "emerald-500",
+      "usage": "Passing tests, success messages, positive scores"
+    },
+    "warning": {
+      "hex": "#F59E0B",
+      "rgb": "245, 158, 11",
+      "hsl": "38, 92%, 50%",
+      "tailwind": "amber-500",
+      "usage": "Medium severity issues, warnings, cautionary states"
+    },
+    "error": {
+      "hex": "#EF4444",
+      "rgb": "239, 68, 68",
+      "hsl": "0, 84%, 60%",
+      "tailwind": "red-500",
+      "usage": "Critical issues, errors, destructive actions"
+    }
+  },
+  "neutral": {
+    "dark": {
+      "background": {
+        "hex": "#0F172A",
+        "name": "slate-900"
+      },
+      "surface": {
+        "hex": "#1E293B",
+        "name": "slate-800"
+      },
+      "border": {
+        "hex": "#334155",
+        "name": "slate-700"
+      }
+    },
+    "light": {
+      "background": {
+        "hex": "#FFFFFF",
+        "name": "white"
+      },
+      "surface": {
+        "hex": "#F8FAFC",
+        "name": "slate-50"
+      },
+      "border": {
+        "hex": "#E2E8F0",
+        "name": "slate-200"
+      }
+    },
+    "text": {
+      "primary": {
+        "hex": "#0F172A",
+        "darkMode": "#F8FAFC"
+      },
+      "secondary": {
+        "hex": "#64748B",
+        "name": "slate-500"
+      },
+      "disabled": {
+        "hex": "#CBD5E1",
+        "name": "slate-300"
+      }
+    }
+  },
+  "gradients": {
+    "brand": "from-brand-teal via-brand-purple to-brand-coral",
+    "teal": "from-brand-teal to-brand-teal/70",
+    "coral": "from-brand-coral to-brand-coral/70",
+    "purple": "from-brand-purple to-brand-purple/70"
+  },
+  "typography": {
+    "fonts": {
+      "sans": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      "mono": "JetBrains Mono, 'Fira Code', 'Consolas', 'Monaco', monospace"
+    }
+  },
+  "tagline": "Scan smarter, ship faster",
+  "mission": "Catch security issues and code quality problems before they reach production"
+}

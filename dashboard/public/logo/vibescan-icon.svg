@@ -1,0 +1,28 @@
+<svg width="48" height="40" viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Wave pulse forming "V" shape - Icon only version -->
+  <g id="icon">
+    <!-- Left wave ascending -->
+    <path d="M2 28 Q6 24, 10 20 T18 12 L22 8" stroke="#14B8A6" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <path d="M2 28 Q6 25, 10 22 T18 16 L22 12" stroke="#14B8A6" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.6"/>
+
+    <!-- Right wave descending -->
+    <path d="M22 8 L26 12 Q30 16, 34 20 T42 28 L46 32" stroke="#14B8A6" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <path d="M22 12 L26 16 Q30 20, 34 24 T42 30 L46 32" stroke="#14B8A6" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.6"/>
+
+    <!-- Scanning beam accent -->
+    <line x1="20" y1="2" x2="28" y2="38" stroke="url(#gradient-scan)" stroke-width="1.5" opacity="0.5"/>
+
+    <!-- Center V connection (focal point) -->
+    <circle cx="22" cy="8" r="3" fill="#F97316"/>
+    <circle cx="22" cy="8" r="2" fill="#FFFFFF" opacity="0.3"/>
+  </g>
+
+  <!-- Gradient for scanning beam -->
+  <defs>
+    <linearGradient id="gradient-scan" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:0" />
+      <stop offset="50%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F97316;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+</svg>
