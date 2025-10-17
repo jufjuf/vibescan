@@ -5,7 +5,17 @@ import { ASTAnalyzer } from '../analyzers/ast-analyzer';
 import { SecurityScanner } from './security';
 import { AIPatternScanner } from './ai-patterns';
 import { QualityScanner } from './quality';
-import { ScanResult, ScanOptions, Issue, IssueCategory } from '../types';
+import {
+  ScanResult,
+  ScanOptions,
+  Issue,
+  IssueCategory,
+  IssueSeverity,
+  SEVERITY_WEIGHTS,
+  DEFAULT_FILE_EXTENSIONS,
+  DEFAULT_IGNORE_PATTERNS
+} from '../types';
+import { ErrorHandler } from '../utils/error-handler';
 
 export class Scanner {
   private astAnalyzer: ASTAnalyzer;
@@ -49,24 +59,15 @@ export class Scanner {
   }
 
   private async findFiles(directory: string): Promise<string[]> {
-    const patterns = [
-      '**/*.js',
-      '**/*.ts',
-      '**/*.jsx',
-      '**/*.tsx'
-    ];
+    // Use centralized file extensions
+    const patterns = DEFAULT_FILE_EXTENSIONS.map(ext => `**/*.${ext}`);
 
     const files: string[] = [];
 
     for (const pattern of patterns) {
       const matches = await glob(path.join(directory, pattern), {
-        ignore: [
-          '**/node_modules/**',
-          '**/dist/**',
-          '**/build/**',
-          '**/.next/**',
-          '**/coverage/**'
-        ]
+        // Use centralized ignore patterns
+        ignore: [...DEFAULT_IGNORE_PATTERNS]
       });
       files.push(...matches);
     }
@@ -79,7 +80,7 @@ export class Scanner {
       const analysis = this.astAnalyzer.parseFile(filePath);
       if (!analysis) {
         if (options.verbose) {
-          console.warn(`\n⚠️  Could not parse ${filePath} - skipping`);
+          ErrorHandler.logWarning(`Could not parse ${filePath} - skipping`);
         }
         this.skippedFiles.push({ file: filePath, reason: 'Parse failed' });
         return [];
@@ -94,11 +95,11 @@ export class Scanner {
       return issues;
     } catch (error) {
       if (options.verbose) {
-        console.error(`\n❌ Error scanning ${filePath}: ${error instanceof Error ? error.message : error}`);
+        ErrorHandler.logError(`Scanning ${filePath}`, error);
       }
       this.skippedFiles.push({
         file: filePath,
-        reason: error instanceof Error ? error.message : 'Unknown error'
+        reason: ErrorHandler.formatError(error)
       });
       return [];
     }
@@ -127,28 +128,12 @@ export class Scanner {
   private calculateScore(issues: Issue[], filesScanned: number): number {
     if (filesScanned === 0) return 10;
 
-    const criticalWeight = 5;
-    const highWeight = 3;
-    const mediumWeight = 2;
-    const lowWeight = 1;
-
+    // Use centralized severity weights
     let penalties = 0;
 
     issues.forEach(issue => {
-      switch (issue.severity) {
-        case 'CRITICAL':
-          penalties += criticalWeight;
-          break;
-        case 'HIGH':
-          penalties += highWeight;
-          break;
-        case 'MEDIUM':
-          penalties += mediumWeight;
-          break;
-        case 'LOW':
-          penalties += lowWeight;
-          break;
-      }
+      const weight = SEVERITY_WEIGHTS[issue.severity as IssueSeverity];
+      penalties += weight;
     });
 
     const score = Math.max(0, 10 - (penalties / filesScanned));
