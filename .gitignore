@@ -11,3 +11,4 @@ coverage/
 tests/temp/
 dashboard/.next/
 dashboard/node_modules/
+dashboard/scanner-dist
